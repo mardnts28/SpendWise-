@@ -1,0 +1,33 @@
+-- Migration 001: Initial Schema
+-- Created: 2026-10-16
+
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  currency VARCHAR(5) DEFAULT 'PHP',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  color TEXT NOT NULL DEFAULT '#6366f1',
+  icon TEXT NOT NULL DEFAULT 'dots',
+  custom BOOLEAN DEFAULT false,
+  budget NUMERIC(12,2) DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  amount NUMERIC(12,2) NOT NULL,
+  date DATE NOT NULL,
+  notes TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  type VARCHAR(10) DEFAULT 'expense',
+  is_recurring BOOLEAN DEFAULT false
+);
