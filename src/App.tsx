@@ -895,40 +895,55 @@ function Categories({ user, categories, expenses, onSave, onDelete }: { user: Us
         const total = expenses.filter((e) => e.categoryId === c.id && (!e.type || e.type === "expense")).reduce((s, e) => s + e.amount, 0);
         const hasBudget = c.budget && c.budget > 0;
         const isOver = hasBudget && total > (c.budget || 0);
+        const pct = hasBudget ? Math.round((total / (c.budget || 1)) * 100) : 0;
 
         return <article className="category-card" key={c.id}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
-            <span className="cat-icon large" style={{ background: `${c.color}18`, color: c.color }}><Icon name={c.icon} /></span>
-            <div className="row-actions">{c.custom && <><button onClick={() => setEditing(c)} aria-label="Edit category"><Icon name="edit" /></button><button onClick={() => onDelete(c)} aria-label="Delete category"><Icon name="trash" /></button></>}</div>
+          <div className="category-card-head">
+            <span className="cat-icon large" style={{ background: `${c.color}18`, color: c.color }}>
+              <Icon name={c.icon} size={22} />
+            </span>
+            {c.custom && (
+              <div className="row-actions">
+                <button onClick={() => setEditing(c)} aria-label="Edit category" title="Edit category">
+                  <Icon name="edit" size={16} />
+                </button>
+                <button onClick={() => onDelete(c)} aria-label="Delete category" title="Delete category">
+                  <Icon name="trash" size={16} />
+                </button>
+              </div>
+            )}
           </div>
-          <div>
+
+          <div className="category-card-body">
             <h3>{c.name}</h3>
-            <p>{money(total, user.currency)} spent</p>
+            <p className="category-card-spent">
+              <b>{money(total, user.currency)}</b> spent
+            </p>
+
             {hasBudget ? (
-              <div style={{ marginTop: "8px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "3px" }}>
-                  <span>Budget: {money(c.budget || 0, user.currency)}</span>
-                  <span style={{ color: isOver ? "#ef4444" : "var(--muted)", fontWeight: isOver ? 700 : 400 }}>
-                    {Math.round((total / (c.budget || 1)) * 100)}%
+              <div className="category-budget-wrap">
+                <div className="category-budget-meta">
+                  <span>Budget: <b>{money(c.budget || 0, user.currency)}</b></span>
+                  <span style={{ color: isOver ? "#ef4444" : pct >= 80 ? "#f59e0b" : "var(--muted)", fontWeight: 700 }}>
+                    {pct}%
                   </span>
                 </div>
-                <div style={{ width: "100%", height: "6px", background: "var(--soft)", borderRadius: "3px", overflow: "hidden" }}>
+                <div className="category-budget-bar">
                   <div style={{
-                    width: `${Math.min(100, Math.round((total / (c.budget || 1)) * 100))}%`,
-                    height: "100%",
-                    background: isOver ? "#ef4444" : total >= (c.budget || 1) * 0.8 ? "#f59e0b" : c.color,
-                    borderRadius: "3px",
-                    transition: "width 0.3s ease"
+                    width: `${Math.min(100, pct)}%`,
+                    background: isOver ? "#ef4444" : pct >= 80 ? "#f59e0b" : c.color,
                   }} />
                 </div>
                 {isOver && (
-                  <span style={{ fontSize: "10px", color: "#ef4444", fontWeight: 700, marginTop: "4px", display: "inline-block" }}>
-                    ⚠ Over budget by {money(total - (c.budget || 0), user.currency)}
-                  </span>
+                  <div className="category-budget-alert">
+                    <Icon name="alert" size={12} /> Over budget by {money(total - (c.budget || 0), user.currency)}
+                  </div>
                 )}
               </div>
             ) : (
-              <small style={{ color: "var(--muted)", display: "block", marginTop: "4px" }}>No budget limit set</small>
+              <small style={{ color: "var(--muted)", display: "block", marginTop: "4px", fontSize: "11px" }}>
+                No budget limit set
+              </small>
             )}
           </div>
         </article>;
