@@ -111,7 +111,21 @@ function money(value: number, currency = "PHP") {
 }
 
 function Modal({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  return <div className="modal-backdrop" onMouseDown={onClose}><div className="modal" onMouseDown={(e) => e.stopPropagation()}>{children}</div></div>;
+  useEffect(() => {
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = origOverflow;
+    };
+  }, []);
+
+  return (
+    <div className="modal-backdrop" onMouseDown={onClose}>
+      <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function ReceiptLightbox({ src, onClose }: { src: string; onClose: () => void }) {
@@ -192,6 +206,14 @@ function ExpenseForm({ categories, initial, onSave, onClose }: { categories: Cat
     reader.readAsDataURL(file);
   };
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === "" || /^\d*\.?\d{0,2}$/.test(val)) {
+      setAmount(val);
+      if (error) setError("");
+    }
+  };
+
   const submit = (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -238,7 +260,7 @@ function ExpenseForm({ categories, initial, onSave, onClose }: { categories: Cat
     <div style={{ display: "flex", gap: "8px", background: "var(--soft)", padding: "4px", borderRadius: "12px", marginBottom: "14px" }}>
       <button
         type="button"
-        onClick={() => setType("expense")}
+        onClick={() => { setType("expense"); if (error) setError(""); }}
         className={`btn ${type === "expense" ? "primary" : "ghost"}`}
         style={{ flex: 1, padding: "8px", fontSize: "13px" }}
       >
@@ -246,7 +268,7 @@ function ExpenseForm({ categories, initial, onSave, onClose }: { categories: Cat
       </button>
       <button
         type="button"
-        onClick={() => setType("income")}
+        onClick={() => { setType("income"); if (error) setError(""); }}
         className={`btn ${type === "income" ? "primary" : "ghost"}`}
         style={{ flex: 1, padding: "8px", fontSize: "13px", ...(type === "income" ? { background: "#10b981", borderColor: "#10b981", color: "#fff" } : {}) }}
       >
@@ -257,18 +279,18 @@ function ExpenseForm({ categories, initial, onSave, onClose }: { categories: Cat
     <form onSubmit={submit} className="form-stack">
       <label className="amount-field">
         <span>Amount ({type === "income" ? "Earned" : "Spent"})</span>
-        <div><b>₱</b><input autoFocus inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></div>
+        <div><b>₱</b><input autoFocus inputMode="decimal" type="text" value={amount} onChange={handleAmountChange} placeholder="0.00" /></div>
       </label>
       <div className="form-grid">
-        <label><span>Category</span><select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-        <label><span>Date</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+        <label><span>Category</span><select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); if (error) setError(""); }}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+        <label><span>Date</span><input type="date" value={date} onChange={(e) => { setDate(e.target.value); if (error) setError(""); }} /></label>
       </div>
       <label>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Notes <small>(optional)</small></span>
           <span style={{ fontSize: "11px", color: notes.length > 150 ? "#e53e3e" : "var(--muted)" }}>{notes.length}/150</span>
         </div>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What was this for?" rows={3} maxLength={150} />
+        <textarea value={notes} onChange={(e) => { setNotes(e.target.value); if (error) setError(""); }} placeholder="What was this for?" rows={3} maxLength={150} />
       </label>
 
       {/* Receipt Image Upload */}
@@ -290,7 +312,12 @@ function ExpenseForm({ categories, initial, onSave, onClose }: { categories: Cat
         <input type="checkbox" checked={isRecurring} onChange={(e) => setIsRecurring(e.target.checked)} />
         <span>Repeat monthly subscription / recurring transaction</span>
       </label>
-      {error && <p className="form-error">{error}</p>}
+      {error && (
+        <p className="form-error">
+          <Icon name="alert" size={15} />
+          <span>{error}</span>
+        </p>
+      )}
       <div className="modal-actions">
         <button type="button" className="btn secondary" onClick={onClose}>Cancel</button>
         <button className="btn primary">{initial ? "Save changes" : (type === "income" ? "Record income" : "Add expense")}</button>
@@ -485,7 +512,7 @@ function Shell({ user, page, setPage, logout, children, add }: { user: User; pag
   return <div className="app-shell"><aside><Brand /><nav>{navItems.map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => setPage(item.id)}><Icon name={item.id === "dashboard" ? "dashboard" : item.id} /><span>{item.label}</span></button>)}</nav><div className="side-user"><span>{user.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}</span><div><b>{user.name}</b><small>{user.email}</small></div><button onClick={logout} aria-label="Log out"><Icon name="logout" /></button></div></aside>
     <main className="app-main">{children}</main>
     <button className="fab mobile-fab" onClick={add} aria-label="Add transaction"><Icon name="plus" /></button>
-    <nav className="mobile-nav">{navItems.slice(0, 4).map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => setPage(item.id)}><Icon name={item.id === "dashboard" ? "dashboard" : item.id} /><span>{item.label}</span></button>)}</nav>
+    <nav className="mobile-nav">{navItems.map((item) => <button key={item.id} className={page === item.id ? "active" : ""} onClick={() => setPage(item.id)}><Icon name={item.id === "dashboard" ? "dashboard" : item.id} /><span>{item.label}</span></button>)}</nav>
   </div>;
 }
 
@@ -493,7 +520,7 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; 
   return <header className="page-header"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</header>;
 }
 
-function Dashboard({ user, expenses, categories, add, edit, remove }: { user: User; expenses: Expense[]; categories: Category[]; add: () => void; edit: (e: Expense) => void; remove: (e: Expense) => void }) {
+function Dashboard({ user, expenses, categories, add, edit, remove, setPage }: { user: User; expenses: Expense[]; categories: Category[]; add: () => void; edit: (e: Expense) => void; remove: (e: Expense) => void; setPage: (p: Page) => void }) {
   const currentMonth = dateKey(today).slice(0, 7);
   const monthItems = expenses.filter((e) => e.date.startsWith(currentMonth));
   const monthIncome = monthItems.filter((e) => e.type === "income").reduce((s, e) => s + e.amount, 0);
@@ -528,20 +555,20 @@ function Dashboard({ user, expenses, categories, add, edit, remove }: { user: Us
         <small><b style={{ color: netSavings >= 0 ? "#10b981" : "#ef4444" }}>{netSavings >= 0 ? "✓ In the green" : "⚠ Deficit"}</b> this month</small>
         <div className="sparkline"><i /><i /><i /><i /><i /><i /><i /><i /></div>
       </article>
-      <article className="summary-card">
+      <article className="summary-card clickable" onClick={() => setPage("expenses")} title="Click to view all income entries in Transactions">
         <span>Total Income</span>
         <strong style={{ color: "#10b981" }}>+{money(monthIncome, user.currency)}</strong>
-        <small>{monthItems.filter((e) => e.type === "income").length} income entries</small>
+        <small>{monthItems.filter((e) => e.type === "income").length} income entries · <b style={{ color: "var(--primary)" }}>View →</b></small>
       </article>
-      <article className="summary-card">
+      <article className="summary-card clickable" onClick={() => setPage("expenses")} title="Click to view all expenses in Transactions">
         <span>Total Expenses</span>
         <strong>−{money(monthSpent, user.currency)}</strong>
-        <small>Spent today: {money(todayTotal, user.currency)}</small>
+        <small>Spent today: {money(todayTotal, user.currency)} · <b style={{ color: "var(--primary)" }}>View →</b></small>
       </article>
-      <article className="summary-card">
+      <article className="summary-card clickable" onClick={() => setPage("categories")} title="Click to view category budgets">
         <span>Top Category</span>
         <strong>{top?.name || "—"}</strong>
-        <small>{top ? money(top.total, user.currency) : "No spending yet"}</small>
+        <small>{top ? `${money(top.total, user.currency)} · Budgets →` : "No spending yet"}</small>
       </article>
     </section>
 
@@ -549,7 +576,7 @@ function Dashboard({ user, expenses, categories, add, edit, remove }: { user: Us
       <section className="budget-alerts-banner">
         <div className="budget-alerts-head">
           <span className="alert-badge"><Icon name="alert" size={15} /> Budget Alerts ({budgetAlerts.length})</span>
-          <small>Categories close to or exceeding your monthly spending limits</small>
+          <button type="button" className="btn ghost mini-nav-btn" onClick={() => setPage("categories")}>Manage budgets <Icon name="arrow" size={12} /></button>
         </div>
         <div className="budget-alerts-grid">
           {budgetAlerts.map((c) => (
@@ -572,10 +599,18 @@ function Dashboard({ user, expenses, categories, add, edit, remove }: { user: Us
     )}
 
     <section className="dashboard-grid">
-      <article className="panel spending-panel"><div className="panel-head"><div><span className="eyebrow">Breakdown</span><h2>Spending by category</h2></div><span className="muted">This month</span></div>
+      <article className="panel spending-panel">
+        <div className="panel-head">
+          <div><span className="eyebrow">Breakdown</span><h2>Spending by category</h2></div>
+          <button type="button" className="btn ghost mini-nav-btn" onClick={() => setPage("reports")}>View report <Icon name="arrow" size={12} /></button>
+        </div>
         {monthItems.length ? <div className="category-chart"><div className="big-donut" style={{ background: `conic-gradient(${byCat.filter(c=>c.total).map((c,i,a)=>`${c.color} ${a.slice(0,i).reduce((s,x)=>s+x.total,0)/(monthSpent||1)*100}% ${a.slice(0,i+1).reduce((s,x)=>s+x.total,0)/(monthSpent||1)*100}%`).join(",")})` }}><span><small>Total Spent</small>{money(monthSpent, user.currency)}</span></div><div className="category-bars">{byCat.filter((c) => c.total).slice(0, 5).map((c) => <div key={c.id}><div><span><i style={{ background: c.color }} />{c.name}</span><b>{money(c.total, user.currency)}</b></div><progress max={maxCat} value={c.total} style={{ accentColor: c.color }} /></div>)}</div></div> : <Empty onAdd={add} />}
       </article>
-      <article className="panel transactions"><div className="panel-head"><div><span className="eyebrow">Activity</span><h2>Recent transactions</h2></div></div>
+      <article className="panel transactions">
+        <div className="panel-head">
+          <div><span className="eyebrow">Activity</span><h2>Recent transactions</h2></div>
+          <button type="button" className="btn ghost mini-nav-btn" onClick={() => setPage("expenses")}>View all <Icon name="arrow" size={12} /></button>
+        </div>
         {recent.length ? <div>{recent.map((e) => <ExpenseRow key={e.id} expense={e} category={categories.find((c) => c.id === e.categoryId)} currency={user.currency} onEdit={() => edit(e)} onDelete={() => remove(e)} onViewReceipt={setViewingReceipt} />)}</div> : <Empty onAdd={add} />}
       </article>
     </section>
@@ -662,6 +697,16 @@ function ExpensesPage({ user, expenses, categories, add, edit, remove }: { user:
   const totalSpent = filtered.filter(e => !e.type || e.type === "expense").reduce((s,e) => s + e.amount, 0);
   const totalIncome = filtered.filter(e => e.type === "income").reduce((s,e) => s + e.amount, 0);
 
+  const isFiltered = search !== "" || category !== "all" || typeFilter !== "all" || datePreset !== "all" || customStart !== "" || customEnd !== "";
+  const resetFilters = () => {
+    setSearch("");
+    setCategory("all");
+    setTypeFilter("all");
+    setDatePreset("all");
+    setCustomStart("");
+    setCustomEnd("");
+  };
+
   return <>
     <PageHeader
       eyebrow="Transactions"
@@ -690,24 +735,31 @@ function ExpensesPage({ user, expenses, categories, add, edit, remove }: { user:
         <select value={sort} onChange={(e)=>setSort(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="high">Highest amount</option><option value="low">Lowest amount</option></select>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
-        <div className="date-preset-pills">
-          {[
-            { id: "all", label: "All time" },
-            { id: "thisMonth", label: "This month" },
-            { id: "last7", label: "Last 7 days" },
-            { id: "last30", label: "Last 30 days" },
-            { id: "thisQuarter", label: "This quarter" },
-            { id: "custom", label: "Custom range" },
-          ].map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`date-pill ${datePreset === p.id ? "active" : ""}`}
-              onClick={() => setDatePreset(p.id)}
-            >
-              {p.label}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <div className="date-preset-pills">
+            {[
+              { id: "all", label: "All time" },
+              { id: "thisMonth", label: "This month" },
+              { id: "last7", label: "Last 7 days" },
+              { id: "last30", label: "Last 30 days" },
+              { id: "thisQuarter", label: "This quarter" },
+              { id: "custom", label: "Custom range" },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`date-pill ${datePreset === p.id ? "active" : ""}`}
+                onClick={() => setDatePreset(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          {isFiltered && (
+            <button type="button" className="mini-nav-btn" onClick={resetFilters} style={{ color: "#ef4444", borderColor: "#fca5a5" }}>
+              <Icon name="close" size={12} /> Clear filters
             </button>
-          ))}
+          )}
         </div>
         {datePreset === "custom" && (
           <div className="custom-date-inputs">
@@ -1270,7 +1322,7 @@ export default function App() {
 
   return (
     <Shell user={user} page={page} setPage={setPage} logout={() => setLoggingOut(true)} add={() => setAdding(true)}>
-      {page === "dashboard" && <Dashboard user={user} expenses={expenses} categories={categories} add={() => setAdding(true)} edit={setEditing} remove={setDeleting} />}
+      {page === "dashboard" && <Dashboard user={user} expenses={expenses} categories={categories} add={() => setAdding(true)} edit={setEditing} remove={setDeleting} setPage={setPage} />}
       {page === "expenses" && <ExpensesPage user={user} expenses={expenses} categories={categories} add={() => setAdding(true)} edit={setEditing} remove={setDeleting} />}
       {page === "reports" && <Reports user={user} expenses={expenses} categories={categories} />}
       {page === "categories" && (
